@@ -19,6 +19,7 @@
 #include<fcntl.h>
 #include<stdlib.h>
 
+
 // used from the file calling/using this header file
 extern char *HOME ;
 
@@ -62,41 +63,33 @@ void controllerSIGCHLD(int sigNumber){
 	}
 }
 
-int check(char command[1000], char *commands[100])
-{
+int total(char command[1000], char *commands[100]){
 	int total = 0;
 
 	char *token = strtok(command, "|");
-
-	while(token != NULL)
-	{
+	while(token != NULL){
 		commands[total] = (char*) malloc(100*sizeof(char));
 		strcpy(commands[total], token);
 		total++;
 
 		token = strtok(NULL, "|");
 	}
-
 	return total;
 }
 
-void spawnCommand(int in, int out, char *argv[1000])
-{
+void spawnCommand(int in, int out, char *argv[1000]){
 	int forkRet = fork();
 
-	if(forkRet == -1)
-	{
+	if(forkRet == -1){
 		char *err = strerror(errno);
 		outputShell(strcat(err, "\n"));
 	}
-	else if(forkRet == 0)
-	{
+	else if(forkRet == 0){
 		dup2(in, STDIN_FILENO);
 		dup2(out, STDOUT_FILENO);
 
 		int exeRet = execvp(argv[0], argv);
-		if(exeRet == -1)
-		{
+		if(exeRet == -1){
 			char *err = strerror(errno);
 			printf("%s\n", err);
 			close(in);
@@ -105,50 +98,42 @@ void spawnCommand(int in, int out, char *argv[1000])
 			_Exit(0);
 		}
 	}
-	else
-	{
-		while(waitpid(-1, NULL, 0))
-		{
+	else{
+		while(waitpid(-1, NULL, 0)){
 			if(errno == ECHILD)
 				break;
 		}
 	}
-
 	return;
 }
 
-int splitParams(char *command, char *argv[1000], char *redirection[5]){
+int splitParameters(char *command, char *argv[1000], char *Redirn[5]){
 	char *token = strtok(command, " ");
 	int j=0;
-	int isRedirected = -1;
-	while(token != NULL)
-	{
-		if(strcmp(token, "<")==0)
-		{
+	int isRedir = -1;
+	while(token != NULL){
+		if(strcmp(token, "<")==0){
 			token = strtok(NULL, " ");
-			redirection[0] = (char*) malloc(100*sizeof(char));
-			strcpy(redirection[0], token);
+			Redirn[0] = (char*) malloc(100*sizeof(char));
+			strcpy(Redirn[0], token);
 
-			isRedirected++;
+			isRedir++;
 		}
-		else if(strcmp(token, ">")==0)
-		{
+		else if(strcmp(token, ">")==0){
 			token = strtok(NULL, " ");
-			redirection[1] = (char*) malloc(100*sizeof(char));
-			strcpy(redirection[1], token);
+			Redirn[1] = (char*) malloc(100*sizeof(char));
+			strcpy(Redirn[1], token);
 
-			isRedirected += 2;
+			isRedir += 2;
 		}
-		else if(strcmp(token, ">>")==0)
-		{
+		else if(strcmp(token, ">>")==0){
 			token = strtok(NULL, " ");
-			redirection[1] = (char*) malloc(100*sizeof(char));
-			strcpy(redirection[1], token);
+			Redirn[1] = (char*) malloc(100*sizeof(char));
+			strcpy(Redirn[1], token);
 
-			isRedirected += 4;
+			isRedir += 4;
 		}
-		else if(strcmp(token, "&")!=0)
-		{
+		else if(strcmp(token, "&")!=0){
 			argv[j] = (char*) malloc(100*sizeof(char));
 			strcpy(argv[j], token);
 			j++;
@@ -157,31 +142,30 @@ int splitParams(char *command, char *argv[1000], char *redirection[5]){
 	}
 	argv[j] = NULL;
 
-	return isRedirected;
+	return isRedir;
 }
 
-void setFds(int *in, int *out, int isRedirected, char *redirection[5])
-{
-	if(isRedirected == 0)
-		*in = open(redirection[0], O_RDWR | O_TRUNC, S_IRWXU);
-	else if(isRedirected == 1)
-		*out = open(redirection[1], O_RDWR | O_TRUNC | O_CREAT, S_IRWXU);
-	else if(isRedirected == 3)
-		*out = open(redirection[1], O_RDWR | O_APPEND | O_CREAT, S_IRWXU);
-	else if(isRedirected == 2 || isRedirected == 4)
+void setFileDescriptors(int *in, int *out, int isRedir, char *Redirn[5]){
+	if(isRedir == 0)
+		*in = open(Redirn[0], O_RDWR | O_TRUNC, S_IRWXU);
+	else if(isRedir == 1)
+		*out = open(Redirn[1], O_RDWR | O_TRUNC | O_CREAT, S_IRWXU);
+	else if(isRedir == 3)
+		*out = open(Redirn[1], O_RDWR | O_APPEND | O_CREAT, S_IRWXU);
+	else if(isRedir == 2 || isRedir == 4)
 	{
-		*in = open(redirection[0], O_RDWR | O_TRUNC, S_IRWXU);
-		*out = open(redirection[1], O_RDWR | O_TRUNC | O_CREAT, S_IRWXU);
+		*in = open(Redirn[0], O_RDWR | O_TRUNC, S_IRWXU);
+		*out = open(Redirn[1], O_RDWR | O_TRUNC | O_CREAT, S_IRWXU);
 	}
 }
 
 
 // function for process running in-front(foreground process)
 void frontProcess(char *inp){
-	char *distinctCommands[100];
+	char *subCommands[100];
 	char *argv[1000];
-	char *redirection[5];
-	int totalDistinct = check(inp, distinctCommands);
+	char *Redirn[5];
+	int totalDistinct = total(inp, subCommands);
 
 	int pipeFd[2];
 	int in = STDIN_FILENO;
@@ -193,14 +177,14 @@ void frontProcess(char *inp){
 	for(i=0;i<=totalDistinct-2;i++)
 	{
 
-		char *command = distinctCommands[i];
+		char *command = subCommands[i];
 		char *argvv[1000];
-		char *redirectionInner[5];
+		char *innerRedirn[5];
 
 		out = pipeFd[1];
 
-		int isRedirected = splitParams(command, argvv, redirectionInner);
-		setFds(&in, &out, isRedirected, redirectionInner);
+		int isRedir = splitParameters(command, argvv, innerRedirn);
+		setFileDescriptors(&in, &out, isRedir, innerRedirn);
 
 		if(in == -1 || out == -1)
 		{
@@ -218,8 +202,8 @@ void frontProcess(char *inp){
 
 	out = STDOUT_FILENO;
 
-	int isRedirected = splitParams(distinctCommands[totalDistinct-1], argv, redirection);
-	setFds(&in, &out, isRedirected, redirection);
+	int isRedir = splitParameters(subCommands[totalDistinct-1], argv, Redirn);
+	setFileDescriptors(&in, &out, isRedir, Redirn);
 
 	if(in == -1 || out == -1)
 	{
