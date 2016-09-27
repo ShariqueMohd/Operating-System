@@ -1,7 +1,4 @@
 /*
-    NAME: MOHD SHARIQUE
-    ROLL NO: 20161081
-
     To Check :
     1) That the Directory has been created or not
     2) The directory permission for the same
