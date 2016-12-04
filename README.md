@@ -1,2 +1,2 @@
 # Operating-System
-This repository contains implementation of some interesting topics like shell,system calls etc from OS course 
+This repository contains implementation of problems involving some interesting topics like system calls,multithreading,shared memory etc from OS course.
